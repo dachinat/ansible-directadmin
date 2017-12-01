@@ -45,7 +45,7 @@
 
 - name: template out options.conf
   template:
-    src: options.conf
+    src: options.conf.j2
     dest: /usr/local/directadmin/custombuild/options.conf
     backup: yes
   when: directadmin_force_update_options
