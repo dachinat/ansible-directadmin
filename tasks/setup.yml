@@ -14,30 +14,15 @@
     src: .custombuild.j2
     dest: "{{ directadmin_setup_path }}/.custombuild"
 
-- name: check if DA is already running on host
-  uri:
-    url: http://localhost:2222
-    return_content: no
-  register: da_present
 
-- name: toggle whether to install DA or not
+- name: check installation
+  stat: path="{{ directadmin_custombuild_path }}/../conf/directadmin.conf"
+  register: directadmin_present
+
+- name: toggle whether install DA or not
   set_fact:
     directadmin_install: False
-  when: da_present.status == 200
-
-- block:
-    - name: ensure directadmin path if remote options file is used
-      file:
-        path: "{{ directadmin_custombuild_path }}"
-        recurse: yes
-        state: directory
-
-    - name: try remote custombuild options file
-      get_url:
-        url: "{{ directadmin_custombuild_options_conf }}"
-        dest: "{{ directadmin_custombuild_path }}/options.conf"
-
-  when: directadmin_custombuild_options_conf is defined and directadmin_custombuild_options_conf is not none
+  when: directadmin_present.stat.exists == True
 
 # https://youtu.be/b00j4WblrzA?t=238
 
@@ -57,3 +42,63 @@
 - debug:
     msg: "Directadmin is already installed and running, skipping.."
   when: not directadmin_install
+
+- name: template out options.conf
+  template:
+    src: options.conf
+    dest: /usr/local/directadmin/custombuild/options.conf
+    backup: yes
+  when: directadmin_force_update_options
+
+- name: update custombuild
+  command: "{{ item }}"
+  with_items:
+    - "{{ directadmin_custombuild_path }}/build update"
+    - "{{ directadmin_custombuild_path }}/build all d"
+    - "{{ directadmin_custombuild_path }}/build rewrite_confs"
+  when: directadmin_force_update_options
+
+- block:
+    - name: modify directadmin ssl configuration
+      lineinfile:
+        path: "{{ directadmin_custombuild_path }}/../conf/directadmin.conf"
+        regexp: '^SSL'
+        line: 'SSL=1'
+      when: directadmin_use_ssl
+
+    - name: modify directadmin ca cert
+      lineinfile:
+        path: "{{ directadmin_custombuild_path }}/../conf/directadmin.conf"
+        regexp: '^cacert'
+        line: "cacert={{ directadmin_ca_cert }}"
+      when: directadmin_use_ssl and directadmin_ca_cert is defined and directadmin_ca_cert is not none
+    - name: modify directadmin ca key
+      lineinfile:
+        path: "{{ directadmin_custombuild_path }}/../conf/directadmin.conf"
+        regexp: '^cakey'
+        line: "cakey={{ directadmin_ca_key }}"
+      when: directadmin_use_ssl and directadmin_ca_key is defined and directadmin_ca_key is not none
+
+    - name: modify httpd vhost cert file
+      lineinfile:
+        path: "/etc/httpd/conf/extra/httpd-vhosts.conf"
+        regexp: 'SSLCertificateFile /etc/httpd/conf/ssl.crt/server.crt'
+        line: "SSLCertificateFile {{ directadmin_ca_cert }}"
+      when: directadmin_use_ssl_in_httpd
+    - name: "modify httpd vhost key file"
+      lineinfile:
+        path: "/etc/httpd/conf/extra/httpd-vhosts.conf"
+        regexp: 'SSLCertificateKeyFile /etc/httpd/conf/ssl.key/server.key'
+        line: "SSLCertificateKeyFile {{ directadmin_ca_key }}"
+      when: directadmin_use_ssl_in_httpd
+    - name: "modify httpd vhost ca file"
+      lineinfile:
+        path: "/etc/httpd/conf/extra/httpd-vhosts.conf"
+        regexp: 'SSLCACertificateFile /etc/httpd/conf/ssl.crt/server.ca'
+        line: "SSLCACertificateFile {{ directadmin_ca_cert }}"
+      when: directadmin_use_ssl_in_httpd
+
+    - name: "reload directadmin service"
+      service:
+        name: directadmin
+        state: restarted

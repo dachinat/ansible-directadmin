@@ -13,12 +13,6 @@ directadmin_custombuild_version: 2.0
 directadmin_custombuild_path: /usr/local/directadmin/custombuild
 directadmin_cache_timeout: 3600
 
-directadmin_use_ssl: False
-directadmin_ca_key:
-directadmin_ca_cert:
-directadmin_use_ssl_in_httpd: False
-directadmin_force_update_options: False
-
 # Packages - http://help.directadmin.com/item.php?id=354
 directadmin_debian6_packages:
   - gcc
