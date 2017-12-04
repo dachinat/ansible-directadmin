@@ -70,8 +70,8 @@
       lineinfile:
         path: "{{ directadmin_custombuild_path }}/../conf/directadmin.conf"
         regexp: '^cacert'
-        line: "cacert={{ directadmin_ca_cert }}"
-      when: directadmin_use_ssl and directadmin_ca_cert is defined and directadmin_ca_cert is not none
+        line: "cacert={{ directadmin_ca_fullchain }}"
+      when: directadmin_use_ssl and directadmin_ca_fullchain is defined and directadmin_ca_fullchain is not none
     - name: modify directadmin ca key
       lineinfile:
         path: "{{ directadmin_custombuild_path }}/../conf/directadmin.conf"
@@ -95,10 +95,33 @@
       lineinfile:
         path: "/etc/httpd/conf/extra/httpd-vhosts.conf"
         regexp: 'SSLCACertificateFile /etc/httpd/conf/ssl.crt/server.ca'
-        line: "SSLCACertificateFile {{ directadmin_ca_cert }}"
+        line: "SSLCACertificateFile {{ directadmin_ca_chain }}"
       when: directadmin_use_ssl_in_httpd
 
-    - name: "reload directadmin service"
-      service:
-        name: directadmin
-        state: restarted
+    - name: replace_crt
+      copy:
+        src: "{{ directadmin_replace_crt }}"
+        dest: /etc/httpd/conf/ssl.crt/server.crt
+      when: directadmin_replace_certs and directadmin_replace_crt is defined and directadmin_replace_crt is not none
+    - name: replace_key
+      copy:
+        src: "{{ directadmin_replace_key }}"
+        dest: /etc/httpd/conf/ssl.key/server.key
+      when: directadmin_replace_certs and directadmin_replace_key is defined and directadmin_replace_key is not none
+    - name: replace_ca
+      copy:
+        src: "{{ directadmin_replace_ca }}"
+        dest: /etc/httpd/conf/ssl.crt/server.ca
+      when: directadmin_replace_certs and directadmin_replace_ca is defined and directadmin_replace_ca is not none
+
+- name: template out options.conf
+  template:
+    src: options.conf.j2
+    dest: /usr/local/directadmin/custombuild/options.conf
+    backup: yes
+  when: directadmin_force_update_options
+
+- name: "reload directadmin service"
+  service:
+    name: directadmin
+    state: restarted

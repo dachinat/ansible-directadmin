@@ -12,11 +12,18 @@ directadmin_custombuild_options_conf: # like http://yourdomain.com/options.conf
 directadmin_custombuild_version: 2.0
 directadmin_custombuild_path: /usr/local/directadmin/custombuild
 directadmin_cache_timeout: 3600
-
 directadmin_use_ssl: False
+# Remote paths
 directadmin_ca_key:
+directadmin_ca_fullchain:
 directadmin_ca_cert:
+directadmin_ca_chain:
 directadmin_use_ssl_in_httpd: False
+directadmin_replace_certs: False
+# Local paths to certificate files
+directadmin_replace_crt:
+directadmin_replace_key:
+directadmin_replace_ca:
 directadmin_force_update_options: False
 
 # Packages - http://help.directadmin.com/item.php?id=354
